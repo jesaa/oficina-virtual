@@ -8,12 +8,12 @@
  * Please see the file /wire/config.php which contains all configuration options you may
  * specify here. Simply copy any of the configuration options from that file and paste
  * them into this file in order to modify them.
- *
+ * 
  * SECURITY NOTICE
  * In non-dedicated environments, you should lock down the permissions of this file so
  * that it cannot be seen by other users on the system. For more information, please
  * see the config.php section at: https://processwire.com/docs/security/file-permissions/
- *
+ * 
  * This file is licensed under the MIT license
  * https://processwire.com/about/license/mit/
  *
@@ -38,18 +38,7 @@ if(!defined("PROCESSWIRE")) die();
  * @var bool
  *
  */
-$config->debug = true;
-
-/**
- * Prepend template file
- *
- * PHP file in /site/templates/ that will be loaded before each page's template file.
- * Example: _init.php
- *
- * @var string
- *
- */
-$config->prependTemplateFile = '_init.php';
+$config->debug = false;
 
 
 /*** INSTALLER CONFIG ********************************************************************/

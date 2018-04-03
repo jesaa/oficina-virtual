@@ -17,6 +17,7 @@ class PageFinderSyntaxException extends PageFinderException { }
  * @method DatabaseQuerySelect getQuery($selectors, array $options)
  * @method string getQueryAllowedTemplatesWhere(DatabaseQuerySelect $query, $where)
  * @method void getQueryJoinPath(DatabaseQuerySelect $query, $selector)
+ * @method bool|Field getQueryUnknownField($fieldName, array $data);
  *
  */
 
@@ -158,6 +159,7 @@ class PageFinder extends Wire {
 	protected $extraOrSelectors = array(); // one from each field must match
 	protected $sortsAfter = array(); // apply these sorts after pages loaded 
 	protected $reverseAfter = false; // reverse order after load?
+	protected $pageArrayData = array(); // any additional data that should be populated back to any resulting PageArray objects
 	
 	// protected $extraSubSelectors = array(); // subselectors that are added in after getQuery()
 	// protected $extraJoins = array();
@@ -376,6 +378,7 @@ class PageFinder extends Wire {
 		$this->templates_id = null;
 		$this->checkAccess = true; 
 		$this->getQueryNumChildren = 0;
+		$this->pageArrayData = array();
 		$this->setupStatusChecks($selectors, $options);
 
 		// move getTotal option to a class property, after setupStatusChecks
@@ -513,7 +516,7 @@ class PageFinder extends Wire {
 		$eq = null;
 		
 		foreach($selectors as $selector) {
-			$field = $selector->field;
+			$field = $selector->field();
 			
 			if($field === '_custom') {
 				$selectors->remove($selector);
@@ -546,6 +549,12 @@ class PageFinder extends Wire {
 					$eq = (int) $value;
 				}
 				$selectors->remove($selector);
+				
+			} else if(strpos($field, '.owner.') && !$this->wire('fields')->get('owner')) {
+				$selector->field = str_replace('.owner.', '__owner.', $selector->field()); 
+				
+			} else if(stripos($field, 'Fieldtype') === 0) {
+				$this->preProcessFieldtypeSelector($selectors, $selector); 
 			}
 		}
 		
@@ -610,6 +619,7 @@ class PageFinder extends Wire {
 				$o['getTotal'] = true;
 				$o['loadPages'] = false;
 				$o['returnVerbose'] = false;
+				/** @var Selectors $sel */
 				$sel = clone $selectors;
 				foreach($sel as $s) {
 					if($s->field == 'limit' || $s->field == 'start') $sel->remove($s);
@@ -646,6 +656,117 @@ class PageFinder extends Wire {
 		$this->start = $start;
 	}
 
+	/**
+	 * Pre-process a selector having field name that begins with "Fieldtype"
+	 * 
+	 * @param Selectors $selectors
+	 * @param Selector $selector
+	 * 
+	 */
+	protected function preProcessFieldtypeSelector(Selectors $selectors, Selector $selector) {
+	
+		$foundFields = null;
+		$foundTypes = null;
+		$replaceFields = array();
+		$failFields = array();
+		/** @var Languages|null $languages */
+		$languages = $this->wire('languages');
+		$selectorCopy = null;
+		
+		foreach($selector->fields() as $fieldName) {
+		
+			$subfield = '';
+			$findPerField = false;
+			$findExtends = false;
+
+			if(strpos($fieldName, '.')) {
+				$parts = explode('.', $fieldName);
+				$fieldName = array_shift($parts); 
+				foreach($parts as $k => $part) {
+					if($part === 'fields') {
+						$findPerField = true;
+						unset($parts[$k]);
+					} else if($part === 'extends') {
+						$findExtends = true;
+						unset($parts[$k]); 
+					}
+				}
+				if(count($parts)) $subfield = implode('.', $parts);
+			}
+			
+			$fieldtype = $this->wire('fieldtypes')->get($fieldName);
+			if(!$fieldtype) continue;
+			$fieldtypeLang = $languages ? $this->wire('fieldtypes')->get("{$fieldName}Language") : null;
+			
+			foreach($this->wire('fields') as $f) {
+				
+				if($findExtends) {
+					// allow any Fieldtype that is an instance of given one, or extends it
+					if(!wireInstanceOf($f->type, $fieldtype) 
+						&& ($fieldtypeLang === null || !wireInstanceOf($f->type, $fieldtypeLang))) continue;
+					
+				} else {
+					// only allow given Fieldtype
+					if($f->type !== $fieldtype && ($fieldtypeLang === null || $f->type !== $fieldtypeLang)) continue;
+				}
+				
+				$fName = $subfield ? "$f->name.$subfield" : $f->name;
+				
+				if($findPerField) {
+					if($selectorCopy === null) $selectorCopy = clone $selector;
+					$selectorCopy->field = $fName;
+					$selectors->replace($selector, $selectorCopy); 
+					$count = $this->wire('pages')->count($selectors);
+					$selectors->replace($selectorCopy, $selector); 
+					if($count) {
+						if($foundFields === null) {
+							$foundFields = isset($this->pageArrayData['fields']) ? $this->pageArrayData['fields'] : array(); 
+						}
+						// include only fields that we know will match
+						$replaceFields[$fName] = $fName;
+						if(isset($foundFields[$fName])) {
+							$foundFields[$fName] += $count;
+						} else {
+							$foundFields[$fName] = $count;
+						}
+					} else {
+						$failFields[$fName] = $fName;
+					}
+				} else {
+					// include all fields (faster)
+					$replaceFields[$fName] = $fName;
+				}
+				
+				if($findExtends) {
+					if($foundTypes === null) {
+						$foundTypes = isset($this->pageArrayData['extends']) ? $this->pageDataArray['extends'] : array();
+					}
+					$fType = $f->type->className();
+					if(isset($foundTypes[$fType])) {
+						$foundTypes[$fType][] = $fName;
+					} else {
+						$foundTypes[$fType] = array($fName);
+					}
+				}
+			}
+		}
+		
+		if(count($replaceFields)) {
+			$selector->fields = array_values($replaceFields);
+		} else if(count($failFields)) {
+			// forced non-match and prevent field-not-found error after this method
+			$selector->field = reset($failFields);
+		}
+		
+		if(is_array($foundFields)) {
+			arsort($foundFields);
+			$this->pageArrayData['fields'] = $foundFields;
+		}
+		if(is_array($foundTypes)) {
+			$this->pageArrayData['extends'] = $foundTypes;
+		}
+	}
+
 
 	/**
 	 * Pre-process the given selector to perform any necessary replacements
@@ -670,6 +791,7 @@ class PageFinder extends Wire {
 		foreach($fields as $fn) {
 			$dot = strpos($fn, '.');
 			if($dot && strrpos($fn, '.') !== $dot) {
+				if(strpos($fn, '__owner.') !== false) continue;
 				$hasDoubleDot = true;
 				break;
 			}
@@ -683,13 +805,26 @@ class PageFinder extends Wire {
 		} else if($quote == '(') {
 			// selector contains an OR group (quoted selector)
 			// at least one (quoted selector) must match for each field specified in front of it
-			$groupName = $this->wire('sanitizer')->fieldName($selector->getField('string'));
+			$groupName = $selector->group ? $selector->group : $selector->getField('string');
+			$groupName = $this->wire('sanitizer')->fieldName($groupName);
 			if(!$groupName) $groupName = 'none';
 			if(!isset($this->extraOrSelectors[$groupName])) $this->extraOrSelectors[$groupName] = array();
 			if($selector->value instanceof Selectors) {
 				$this->extraOrSelectors[$groupName][] = $selector->value;
 			} else {
-				$this->extraOrSelectors[$groupName][] = $this->wire(new Selectors($selector->value));
+				if($selector->group) {
+					// group is pre-identified, indicating Selector field=value is the OR-group condition
+					$s = clone $selector;
+					$s->quote = '';
+					$s->group = null;
+					$groupSelectors = new Selectors();
+					$groupSelectors->add($s);
+				} else {
+					// selector field is group name and selector value is another selector containing OR-group condition
+					$groupSelectors = new Selectors($selector->value);
+				}
+				$this->wire($groupSelectors);
+				$this->extraOrSelectors[$groupName][] = $groupSelectors;
 			}
 			return false;
 			
@@ -823,7 +958,7 @@ class PageFinder extends Wire {
 					}
 				}
 				if(!$hasParent && $field->parent_id) {
-					if(strpos($field->type->className(), 'FieldtypeRepeater') !== false) {
+					if($this->isRepeaterFieldtype($field->type)) { 
 						// repeater items not stored directly under parent_id, but as another parent under parent_id. 
 						// so we use has_parent instead here
 						$selectors->prepend(new SelectorEqual('has_parent', $field->parent_id));
@@ -984,37 +1119,60 @@ class PageFinder extends Wire {
 			foreach($fields as $n => $fieldName) {
 
 				// if a specific DB field from the table has been specified, then get it, otherwise assume 'data'
-				if(strpos($fieldName, ".")) list($fieldName, $subfield) = explode(".", $fieldName); 	
-					else $subfield = 'data';
+				if(strpos($fieldName, '.')) {
+					// if fieldName is "a.b.c" $subfields (plural) retains "b.c" while $subfield is just "b"
+					list($fieldName, $subfields) = explode('.', $fieldName, 2);
+					if(strpos($subfields, '.')) {
+						list($subfield) = explode('.', $subfields); // just the first
+					} else {
+						$subfield = $subfields;
+					}
+				} else {
+					$subfields = 'data';
+					$subfield = 'data';
+				}
+				
+				$field = $this->wire('fields')->get($fieldName); 
 
-				if(!$field = $this->wire('fields')->get($fieldName)) {
-					// field does not exist, try to match an API variable
-					$value = $this->wire($fieldName); 
-					if(!$value) throw new PageFinderSyntaxException("Field does not exist: $fieldName");
-					if(count($fields) > 1) throw new PageFinderSyntaxException("You may only match 1 API variable at a time"); 
-					if(is_object($value)) {
-						if($subfield == 'data') $subfield = 'id';
-						$selector->field = $subfield; 
+				if(!$field) {
+					// field does not exist, see if it can be processed in some other way
+					$field = $this->getQueryUnknownField($fieldName, array(
+						'subfield' => $subfield,
+						'subfields' => $subfields, 
+						'fields' => $fields, 
+						'query' => $query, 
+						'selector' => $selector, 
+						'selectors' => $selectors
+					));
+					if($field === true) {
+						// true indicates the hook modified query to handle this (or ignore it), and should move to next field
+						continue;
+					} else if($field instanceof Field) {
+						// hook has mapped it to a field and processing of field should proceed
+					} else if($field) {
+						// mapped it to an API var or something else where we need not continue processing $field or $fields
+						break;
+					} else {
+						throw new PageFinderSyntaxException("Field does not exist: $fieldName");
 					}
-					if(!$selector->matches($value)) {
-						$query->where("1>2"); // force non match
-					}
-					break;
 				}
 
 				// keep track of number of times this table name has appeared in the query
-				if(!isset($fieldCnt[$field->table])) $fieldCnt[$field->table] = 0; 
-					else $fieldCnt[$field->table]++; 
+				if(isset($fieldCnt[$field->table])) {
+					$fieldCnt[$field->table]++;
+				} else {
+					$fieldCnt[$field->table] = 0;
+				}
 
 				// use actual table name if first instance, if second instance of table then add a number at the end
 				$tableAlias = $field->table . ($fieldCnt[$field->table] ? $fieldCnt[$field->table] : '');
 				$tableAlias = $database->escapeTable($tableAlias);
 
-				$valueArray = is_array($selector->value) ? $selector->value : array($selector->value); 
 				$join = '';
+				$numEmptyValues = 0; 
+				$valueArray = $selector->values(true); 
 				$fieldtype = $field->type; 
 				$operator = $selector->operator;
-				$numEmptyValues = 0; 
 
 				foreach($valueArray as $value) {
 
@@ -1033,8 +1191,11 @@ class PageFinder extends Wire {
 					}
 
 					/** @var DatabaseQuerySelect $q */
-					if(isset($subqueries[$tableAlias])) $q = $subqueries[$tableAlias];
-						else $q = $this->wire(new DatabaseQuerySelect());
+					if(isset($subqueries[$tableAlias])) {
+						$q = $subqueries[$tableAlias];
+					} else {
+						$q = $this->wire(new DatabaseQuerySelect());
+					}
 					
 					$q->set('field', $field); // original field if required by the fieldtype
 					$q->set('group', $group); // original group of the field, if required by the fieldtype
@@ -1078,7 +1239,7 @@ class PageFinder extends Wire {
 
 					if(count($fields) > 1 
 						|| (count($valueArray) > 1 && $numEmptyValues > 0)
-						|| $subfield == 'count' 
+						|| ($subfield == 'count' && !$this->isRepeaterFieldtype($field->type))
 						|| ($selector->not && $selector->operator != '!=') 
 						|| $selector->operator == '!=') {
 						// join should instead be a leftjoin
@@ -1116,8 +1277,11 @@ class PageFinder extends Wire {
 			} // fields
 			
 			if(strlen($whereFields)) {
-				if(strlen($where)) $where = "($where) $whereFieldsType ($whereFields)"; 
-					else $where .= "($whereFields)";
+				if(strlen($where)) {
+					$where = "($where) $whereFieldsType ($whereFields)";
+				} else {
+					$where .= "($whereFields)";
+				}
 			}
 		
 		} // selectors
@@ -1125,7 +1289,9 @@ class PageFinder extends Wire {
 		if($where) {
 			$query->where("($where)", $whereBindValues);
 		} else if(count($whereBindValues)) {
-			foreach($whereBindValues as $k => $v) $query->bindValue($k, $v);
+			foreach($whereBindValues as $k => $v) {
+				$query->bindValue($k, $v);
+			}
 		}
 		
 		$this->getQueryAllowedTemplates($query, $options); 
@@ -1136,17 +1302,15 @@ class PageFinder extends Wire {
 			$query->$joinType("$j[table] AS $j[tableAlias] ON $j[tableAlias].pages_id=pages.id AND ($j[join])"); 
 		}
 	
-		/*
-		foreach($this->extraJoins as $j) {
-			$query->join($j);
+		if(count($sortSelectors)) {
+			foreach(array_reverse($sortSelectors) as $s) {
+				$this->getQuerySortSelector($query, $s);
+			}
 		}
-		*/
-
-		if(count($sortSelectors)) foreach(array_reverse($sortSelectors) as $s) $this->getQuerySortSelector($query, $s);
+		
 		$this->postProcessQuery($query); 
 		
 		return $query; 
-
 	}
 
 	/**
@@ -1574,8 +1738,13 @@ class PageFinder extends Wire {
 				$query->leftjoin("$table AS $tableAlias ON $tableAlias.pages_id=pages.$idColumn");
 
 				if($subValue === 'count') {
-					// sort by quantity of items
-					$value = "COUNT($tableAlias.data)";
+					if($this->isRepeaterFieldtype($field->type)) {
+						// repeaters have a native count column that can be used for sorting
+						$value = "$tableAlias.count";
+					} else {
+						// sort by quantity of items
+						$value = "COUNT($tableAlias.data)";
+					}
 
 				} else if(is_object($blankValue) && ($blankValue instanceof PageArray || $blankValue instanceof Page)) {
 					// If it's a FieldtypePage, then data isn't worth sorting on because it just contains an ID to the page
@@ -1679,6 +1848,7 @@ class PageFinder extends Wire {
 			foreach($this->wire('languages') as $language) {
 				if(!$language->isDefault()) $langNames[$language->id] = "name" . (int) $language->id;
 			}
+			if(!count($langNames)) $langNames = null;
 		} else {
 			$langNames = null;
 		}
@@ -1700,6 +1870,14 @@ class PageFinder extends Wire {
 			$query->where("pages.id=1");
 		} else {
 			$selectorValue = $selector->value;
+			if(is_array($selectorValue)) {
+				// only the PagePaths module can perform OR value searches on path/url
+				if($langNames) {
+					throw new PageFinderSyntaxException("OR values not supported for multi-language 'path' or 'url'"); 
+				} else {
+					throw new PageFinderSyntaxException("OR value support of 'path' or 'url' requires core PagePaths module");
+				}
+			}
 			if($langNames) $selectorValue = $this->wire('modules')->get('LanguageSupportPageNames')->updatePath($selectorValue); 
 			$parts = explode('/', rtrim($selectorValue, '/')); 
 			$part = $database->escapeStr($this->wire('sanitizer')->pageName(array_pop($parts), Sanitizer::toAscii)); 
@@ -1747,8 +1925,7 @@ class PageFinder extends Wire {
 	 */
 	protected function getQueryNativeField(DatabaseQuerySelect $query, $selector, $fields) {
 
-		$value = $selector->value; 
-		$values = is_array($value) ? $value : array($value); 
+		$values = $selector->values(true); 
 		$SQL = '';
 		$database = $this->wire('database'); 
 
@@ -1788,7 +1965,7 @@ class PageFinder extends Wire {
 					}
 					$field = 'parent_id';
 
-					if(count($values) == 1 && $selector->getOperator() === '=') {
+					if(count($values) == 1 && $selector->operator() === '=') {
 						$this->parent_id = reset($values);
 					}
 
@@ -1837,7 +2014,7 @@ class PageFinder extends Wire {
 					// convert templates specified as a name to the numeric template ID
 					// allows selectors like 'template=my_template_name'
 					$field = 'templates_id';
-					if(count($values) == 1 && $selector->getOperator() === '=') $this->templates_id = reset($values);
+					if(count($values) == 1 && $selector->operator() === '=') $this->templates_id = reset($values);
 					if(!ctype_digit("$value")) $value = (($template = $this->wire('templates')->get($value)) ? $template->id : 0); 
 				}
 
@@ -2187,12 +2364,11 @@ class PageFinder extends Wire {
 		}
 		
 		if($field) {
-			$className = $field->type->className();
 			if($field->type instanceof FieldtypePage) {
 				$is = true;
 			} else if(strpos($field->type->className(), 'FieldtypePageTable') !== false) {
 				$is = true;
-			} else if(strpos($className, 'FieldtypeRepeater') !== false) {
+			} else if($this->isRepeaterFieldtype($field->type)) {
 				$is = $literal ? false : true;
 			} else {
 				$test = $field->type->getBlankValue(new NullPage(), $field); 
@@ -2203,6 +2379,221 @@ class PageFinder extends Wire {
 		}
 		if($is && $field) $is = $field; 
 		return $is;
+	}
+
+	/**
+	 * Is the given Fieldtype for a repeater?
+	 * 
+	 * @param Fieldtype $fieldtype
+	 * @return bool
+	 * 
+	 */
+	protected function isRepeaterFieldtype(Fieldtype $fieldtype) {
+		return wireInstanceOf($fieldtype, 'FieldtypeRepeater'); 
+	}
+	
+	/**
+	 * Hook called when an unknown field is found in the selector
+	 * 
+	 * By default, PW will throw a PageFinderSyntaxException but that behavior can be overridden by 
+	 * hooking this method and making it return true rather than false. It may also choose to 
+	 * map it to a Field by returning a Field object. If it returns integer 1 then it indicates the
+	 * fieldName mapped to an API variable. If this method returns false, then it signals the getQuery()
+	 * method that it was unable to map it to anything and should be considered a fail.
+	 * 
+	 * @param string $fieldName
+	 * @param array $data Array of data containing the following in it: 
+	 *  - `subfield` (string): First subfield
+	 *  - `subfields` (string): All subfields separated by period (i.e. subfield.tertiaryfield)
+	 *  - `fields` (array): Array of all other field names being processed in this selector. 
+	 *  - `query` (DatabaseQuerySelect): Database query select object
+	 *  - `selector` (Selector): Selector that contains this field
+	 *  - `selectors` (Selectors): All the selectors
+	 * @return bool|Field|int
+	 * @throws PageFinderSyntaxException
+	 * 
+	 */
+	protected function ___getQueryUnknownField($fieldName, array $data) { 
+		
+		$_data = array(
+			'subfield ' => 'data', 
+			'subfields' => 'data', 
+			'fields' => array(), 
+			'query' => null, 
+			'selector' => null, 
+			'selectors' => null, 
+		);
+		
+		$data = array_merge($_data, $data); 
+		/** @var array $fields */
+		$fields = $data['fields'];
+		/** @var string $subfields */
+		$subfields = $data['subfields'];
+		/** @var Selector $selector */
+		$selector = $data['selector'];
+		/** @var DatabaseQuerySelect $query */
+		$query = $data['query'];
+		/** @var Wire|null $value */
+		$value = $this->wire($fieldName);
+		
+		if($value) {
+			// found an API var
+			if(count($fields) > 1) {
+				throw new PageFinderSyntaxException("You may only match 1 API variable at a time");
+			}
+			if(is_object($value)) {
+				if($subfields == 'data') $subfields = 'id';
+				$selector->field = $subfields;
+			}
+			if(!$selector->matches($value)) {
+				$query->where("1>2"); // force non match
+			}
+			return 1; // indicate no further fields need processing
+		}
+		
+		// not an API var
+		
+		if($this->getQueryOwnerField($fieldName, $data)) return true;
+	
+		return false;
+	}
+
+	/**
+	 * Process an owner back reference selector for PageTable, Page and Repeater fields
+	 * 
+	 * @param string $fieldName Field name in "fieldName__owner" format
+	 * @param array $data Data as provided to getQueryUnknownField method
+	 * @return bool True if $fieldName was processed, false if not
+	 * @throws PageFinderSyntaxException
+	 * 
+	 */
+	protected function getQueryOwnerField($fieldName, array $data) {
+		
+		if(substr($fieldName, -7) !== '__owner') return false;
+		
+		/** @var array $fields */
+		$fields = $data['fields'];
+		/** @var string $subfields */
+		$subfields = $data['subfields'];
+		/** @var Selectors $selectors */
+		$selectors = $data['selectors'];
+		/** @var Selector $selector */
+		$selector = $data['selector'];
+		/** @var DatabaseQuerySelect $query */
+		$query = $data['query'];
+		
+		if(empty($subfields)) throw new PageFinderSyntaxException("When using owner a subfield is required");
+
+		list($ownerFieldName,) = explode('__owner', $fieldName);
+		$ownerField = $this->wire('fields')->get($ownerFieldName);
+		if(!$ownerField) return false;
+		
+		$ownerTypes = array('FieldtypeRepeater', 'FieldtypePageTable', 'FieldtypePage');
+		if(!wireInstanceOf($ownerField->type, $ownerTypes)) return false;
+		if($selector->get('owner_processed')) return true;
+	
+		static $ownerNum = 0;
+		$ownerNum++;
+	
+		// determine which templates are using $ownerFieldName
+		$templateIDs = array();
+		foreach($this->wire('templates') as $template) {
+			if($template->hasField($ownerFieldName)) {
+				$templateIDs[$template->id] = $template->id;
+			}
+		}
+	
+		if(!count($templateIDs)) $templateIDs[] = 0;
+		$templateIDs = implode('|', $templateIDs);
+
+		// determine include=mode
+		$include = $selectors->getSelectorByField("include");
+		$include = $include ? $include->value : 'hidden';
+	
+		/** @var Selectors $ownerSelectors Build selectors */
+		$ownerSelectors = $this->wire(new Selectors("templates_id=$templateIDs, include=$include, get_total=0"));
+		$ownerSelector = clone $selector;
+
+		if(count($fields) > 1) {
+			// OR fields present
+			array_shift($fields);
+			$subfields = array($subfields);
+			foreach($fields as $name) {
+				if(strpos($name, "$fieldName.") === 0) {
+					list(,$name) = explode('__owner.', $name); 	
+					$subfields[] = $name;
+				} else {
+					throw new PageFinderSyntaxException(
+						"When owner is present, group of OR fields must all be '$ownerFieldName.owner.subfield' format"
+					);
+				}
+			}
+		}
+		
+		$ownerSelector->field = $subfields;
+		$ownerSelectors->add($ownerSelector);
+	
+		// use field.count>0 as an optimization?
+		$useCount = true;
+		
+		// find any other selectors referring to this same owner, bundle them in, and remove from source
+		foreach($selectors as $sel) {
+			if(strpos($sel->field(), "$fieldName.") !== 0) continue;
+			$sel->set('owner_processed', true);
+			$op = $sel->operator();
+			if($useCount && ($sel->not || strpos($op, '!') !== false || strpos($op, '<') !== false)) {
+				$useCount = false;
+			}
+			if($sel === $selector) {
+				continue; // skip main
+			}	
+			$s = clone $sel;
+			$s->field = str_replace("$fieldName.", '', $sel->field());
+			$ownerSelectors->add($s); 
+			$selectors->remove($sel);
+		}
+	
+		if($useCount) {
+			$sel = new SelectorGreaterThan("$ownerFieldName.count", 0);
+			$ownerSelectors->add($sel);
+		}
+		
+		/** @var PageFinder $finder */
+		$finder = $this->wire(new PageFinder());
+		$ids = $finder->findIDs($ownerSelectors);
+		
+		if($this->isRepeaterFieldtype($ownerField->type)) {
+			// Repeater
+			$alias = "owner_parent$ownerNum";
+			$names = array();
+			foreach($ids as $id) {
+				$names[] = "'for-page-$id'";
+			}
+			$names = empty($names) ? "'force no match'" : implode(",", $names);
+			$query->join("pages AS $alias ON $alias.id=pages.parent_id AND $alias.name IN($names)");
+		} else {
+			// Page or PageTable
+			$table = $ownerField->getTable();
+			$alias = "owner{$ownerNum}_$table";
+			$ids = empty($ids) ? "0" : implode(',', $ids);
+			$query->join("$table AS $alias ON $alias.data=pages.id AND $alias.pages_id IN($ids)");
+		}
+
+		return true;
+	}
+
+	/**
+	 * Get data that should be populated back to any resulting PageArray’s data() method
+	 * 
+	 * @param PageArray|null $pageArray Optionally populate given PageArray
+	 * @return array
+	 * 
+	 */
+	public function getPageArrayData(PageArray $pageArray = null) {
+		if($pageArray !== null && count($this->pageArrayData)) {
+			$pageArray->data($this->pageArrayData); 
+		}
+		return $this->pageArrayData; 
 	}
 }
 

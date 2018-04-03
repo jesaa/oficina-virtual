@@ -436,7 +436,7 @@ function InputfieldDependencies($target) {
 			consoleLog('Determined that field "' + fieldNameToShow + '" should be visible.');
 			if($fieldToShow.is('.InputfieldStateHidden')) {
 				// field is hidden so show/fade in
-				$fieldToShow.removeClass('InputfieldStateHidden').fadeIn();
+				$fieldToShow.removeClass('InputfieldStateHidden').show(); // fadeIn();
 				$(document).trigger('showInputfield', $fieldToShow);
 				numVisibilityChanges++;
 				consoleLog('Field is now visible.');
@@ -925,6 +925,8 @@ function InputfieldFormBeforeUnloadEvent(e) {
 function InputfieldStates($target) {
 
 	var hasTarget = true;
+	var $ = jQuery;
+	
 	if(typeof $target == "undefined") {
 		$target = $("body");
 		hasTarget = false;
@@ -987,6 +989,8 @@ function InputfieldStates($target) {
 		
 		$.get(ajaxURL, function(data) {
 			$li.removeClass('InputfieldAjaxLoading InputfieldStateCollapsed');
+			var $icon = $li.children('.InputfieldHeader').find('.toggle-icon'); 
+			if($icon.length) $icon.toggleClass($icon.attr('data-to'));
 			$parent.replaceWith($(data)).hide();
 			$parent.slideDown();
 			var $inputfields = $li.find('.Inputfield');
@@ -1081,9 +1085,11 @@ function InputfieldStates($target) {
 					if($li.hasClass('InputfieldNoFocus')) return;
 					var $input = $li.find(":input:visible");
 					if($input.length == 1 && !$input.is('button')) {
-						var t = $input.attr('type');
-						if($input.is('textarea') || t == 'text' || t == 'email' || t == 'url' || t == 'number') {
-							$input.focus();
+						if($input.css('position') != 'absolute') {
+							var t = $input.attr('type');
+							if($input.is('textarea') || t == 'text' || t == 'email' || t == 'url' || t == 'number') {
+								$input.focus();
+							}
 						}
 					}
 				} else {

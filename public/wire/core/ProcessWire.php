@@ -17,7 +17,7 @@ require_once(__DIR__ . '/boot.php');
  * ~~~~~
  * #pw-body
  * 
- * ProcessWire 3.x, Copyright 2017 by Ryan Cramer
+ * ProcessWire 3.x, Copyright 2018 by Ryan Cramer
  * https://processwire.com
  * 
  * @method init()
@@ -45,7 +45,7 @@ class ProcessWire extends Wire {
 	 * Reversion revision number
 	 * 
 	 */
-	const versionRevision = 62;
+	const versionRevision = 96;
 
 	/**
 	 * Version suffix string (when applicable)
@@ -743,15 +743,19 @@ class ProcessWire extends Wire {
 	 * @param array $options Options to modify default behaviors (experimental): 
 	 *  - `siteDir` (string): Name of "site" directory in $rootPath that contains site's config.php, no slashes (default="site").
 	 * @return Config
+	 * @throws WireException
 	 * 
 	 */
 	public static function buildConfig($rootPath, $rootURL = null, array $options = array()) {
 		
+		if(strpos($rootPath, '..') !== false) {
+			$rootPath = realpath($rootPath);
+			if($rootPath === false) throw new WireException("Path not found"); 
+		}
+		
 		if(DIRECTORY_SEPARATOR != '/') {
 			$rootPath = str_replace(DIRECTORY_SEPARATOR, '/', $rootPath);
 		}
-
-		if(strpos($rootPath, '..') !== false) $rootPath = realpath($rootPath);
 		
 		$httpHost = '';
 		$scheme = '';
@@ -781,7 +785,7 @@ class ProcessWire extends Wire {
 			$testDir = array_pop($parts);
 			if(($testDir === $siteDir || strpos($testDir, 'site-') === 0) && is_file("$rootPath/config.php")) {
 				// rootPath was given as a /site/ directory rather than root directory
-				$rootPath = '/' . implode('/', $parts); // remove siteDir from rootPath
+				$rootPath = implode('/', $parts); // remove siteDir from rootPath
 				$siteDir = $testDir; // set proper siteDir
 			}
 		} 
@@ -804,7 +808,7 @@ class ProcessWire extends Wire {
 			unset($sf, $f, $x);
 		
 			// when internal is true, we are not being called by an external script
-			$cfg['internal'] = $realIndexFile == $realScriptFile;
+			$cfg['internal'] = strtolower($realIndexFile) == strtolower($realScriptFile);
 
 		} else {
 			// when included from another app or command line script

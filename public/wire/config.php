@@ -331,6 +331,24 @@ $config->sessionHistory = 0;
  */
 $config->userAuthHashType = 'sha1';
 
+/**
+ * Names (string) or IDs (int) of roles that are not allowed to login
+ *
+ * Note that you must create these roles yourself in the admin. When a user has
+ * one of these named roles, $session->login() will not accept a login from them.
+ * This affects the admin login form and any other login forms that use ProcessWire’s
+ * session system.
+ * 
+ * The default value specifies a role name of "login-disabled", meaning if you create
+ * a role with that name, and assign it to a user, that user will no longer be able
+ * to login. 
+ *
+ * @var array
+ *
+ */
+$config->loginDisabledRoles = array(
+	'login-disabled'
+);
 
 
 /*** 4. TEMPLATE FILES **************************************************************************/
@@ -544,6 +562,7 @@ $config->fileContentTypes = array(
 	'jpg' => 'image/jpeg',
 	'jpeg' => 'image/jpeg',
 	'png' => 'image/x-png',
+	'svg' => 'image/svg+xml'
 	);
 
 
@@ -554,7 +573,8 @@ $config->fileContentTypes = array(
  * 
  * #property bool upscaling Upscale if necessary to reach target size? (1=true, 0=false)
  * #property bool cropping Crop if necessary to reach target size? (1=true, 0=false)
- * #property bool autoRotation Automatically correct orientation?
+ * #property bool autoRotation Automatically correct orientation? (1=true, 0=false)
+ * #property bool interlace Use interlaced JPEGs by default? Recommended. (1=true, 0=false)
  * #property string sharpening Sharpening mode, enter one of: none, soft, medium, strong
  * #property int quality Image quality, enter a value between 1 and 100, where 100 is highest quality (and largest files)
  * #property float defaultGamma Default gamma of 0.5 to 4.0 or -1 to disable gamma correction (default=2.0)
@@ -566,6 +586,7 @@ $config->imageSizerOptions = array(
 	'upscaling' => true, // upscale if necessary to reach target size?
 	'cropping' => true, // crop if necessary to reach target size?
 	'autoRotation' => true, // automatically correct orientation?
+	'interlace' => false, // use interlaced JPEGs by default? (recommended)
 	'sharpening' => 'soft', // sharpening: none | soft | medium | strong
 	'quality' => 90, // quality: 1-100 where higher is better but bigger
 	'hidpiQuality' => 60, // Same as above quality setting, but specific to hidpi images
@@ -697,6 +718,14 @@ $config->protectCSRF = true;
  *
  */
 $config->maxUrlSegments = 4;
+
+/**
+ * Maximum length for any individual URL segment (default=128)
+ * 
+ * @var int
+ * 
+ */
+$config->maxUrlSegmentLength = 128;
 
 /**
  * Maximum URL/path slashes (depth) for request URLs
@@ -983,6 +1012,28 @@ $config->substituteModules = array(
 );
 
 /**
+ * WireMail module(s) default settings
+ * 
+ * Note you can add any other properties to the wireMail array that are supported by WireMail settings
+ * like we’ve done with from, fromName and headers here. Any values set here become defaults for the 
+ * WireMail module. 
+ * 
+ * #property string module Name of WireMail module to use or blank to auto-detect. (default='')
+ * #property string from Default from email address, when none provided at runtime. (default=$config->adminEmail)
+ * #property string fromName Default from name string, when none provided at runtime. (default='')
+ * #property array headers Default additional headers to send in email, key=value. (default=[])
+ * 
+ * @var array
+ * 
+ */
+$config->wireMail = array(
+	'module' => '', 
+	'from' => '', 
+	'fromName' => '', 
+	'headers' => array(), 
+);
+
+/**
  * PageList default settings
  * 
  * Note that 'limit' and 'speed' can also be overridden in the ProcessPageList module settings.
@@ -1025,6 +1076,16 @@ $config->pageEdit = array(
 	'editCrumbs' => false,
 );
 
+/**
+ * PageAdd default settings
+ * 
+ * #property string noSuggestTemplates Disable suggestions for new pages (1=disable all, or specify template names separated by space)
+ * 
+ */
+$config->pageAdd = array(
+	'noSuggestTemplates' => '', 
+); 
+
 
 /*** 9. MISC ************************************************************************************/
 
@@ -1045,11 +1106,19 @@ $config->logs = array(
 );
 
 /**
+ * Include IP address in logs, when applicable?
+ * 
+ * @var bool
+ * 
+ */
+$config->logIP = false;
+
+/**
  * Default admin theme
  * 
  * Module name of default admin theme for guest and users that haven't already selected one
  *
- * Core options include: **AdminThemeDefault** or **AdminThemeReno**.
+ * Core options include: **AdminThemeDefault** or **AdminThemeReno** or **AdminThemeUikit**.
  * Additional options will depend on what other 3rd party AdminTheme modules you have installed.
  *
  * @var string
@@ -1186,6 +1255,7 @@ $config->lazyPageChunkSize = 250;
  *	);
  * 
  */
+
 
 /*** 10. RUNTIME ********************************************************************************
  * 

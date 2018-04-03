@@ -61,6 +61,12 @@
   display: none; }
 .Inputfields .InputfieldRepeater .InputfieldRepeaterDelete {
   display: none; }
+.Inputfields .InputfieldRepeater.InputfieldRepeaterSingle > .InputfieldContent > .Inputfields {
+  margin-bottom: 0; }
+  .Inputfields .InputfieldRepeater.InputfieldRepeaterSingle > .InputfieldContent > .Inputfields > .InputfieldRepeaterItem {
+    margin-bottom: 0; }
+    .Inputfields .InputfieldRepeater.InputfieldRepeaterSingle > .InputfieldContent > .Inputfields > .InputfieldRepeaterItem > .InputfieldHeader {
+      display: none; }
 
 .InputfieldRepeater .InputfieldWrapper,
 .InputfieldRepeater .InputfieldWrapper > .Inputfields {
@@ -90,5 +96,3 @@
 
 .AdminThemeReno .InputfieldRepeaterItem > .InputfieldHeader .ui-priority-secondary {
   color: rgba(255, 255, 255, 0.8) !important; }
-
-/*# sourceMappingURL=InputfieldRepeater.css.map */
