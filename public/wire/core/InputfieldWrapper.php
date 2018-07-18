@@ -480,7 +480,7 @@ class InputfieldWrapper extends Inputfield implements \Countable, \IteratorAggre
 				$ffAttrs['class'] .= ' ' . $classes['item_required_if']; 
 			}
 
-			if($collapsed) {
+			if($collapsed && $collapsed !== Inputfield::collapsedNever) {
 				$isEmpty = $inputfield->isEmpty();
 				if(($isEmpty && $inputfield instanceof InputfieldWrapper) || 
 					$collapsed === Inputfield::collapsedYes ||
@@ -795,7 +795,9 @@ class InputfieldWrapper extends Inputfield implements \Countable, \IteratorAggre
 
 			// check if a value is required and field is empty, trigger an error if so
 			if($child->name && $child->getSetting('required') && $child->isEmpty()) {
-				$child->error($this->requiredLabel); 
+				$requiredLabel = $child->getSetting('requiredLabel'); 
+				if(empty($requiredLabel)) $requiredLabel = $this->requiredLabel;
+				$child->error($requiredLabel); 
 			}
 		}
 
@@ -1055,7 +1057,7 @@ class InputfieldWrapper extends Inputfield implements \Countable, \IteratorAggre
 	 * #pw-internal
 	 * 
 	 * @param bool $trackChanges
-	 * @return $this
+	 * @return Inputfield|InputfieldWrapper
 	 *
 	 */
 	public function setTrackChanges($trackChanges = true) {
@@ -1069,7 +1071,7 @@ class InputfieldWrapper extends Inputfield implements \Countable, \IteratorAggre
 	 * #pw-internal
 	 *
 	 * @param bool $trackChanges
-	 * @return $this
+	 * @return Inputfield|InputfieldWrapper
 	 *
 	 */
 	public function resetTrackChanges($trackChanges = true) {
