@@ -106,8 +106,8 @@ pre {
 		border-color: #ddd; 
 	}
 	.topnav li.current a {
-		background: #ccc; 
-		border-color: #ccc; 
+		background: #ddd; 
+		border-color: #ddd; 
 	}
 	.topnav li.edit a {
 		background: none; 
@@ -150,16 +150,22 @@ form.search {
 }
 
 #content {
-	width: 65%; 
-	float: left;
+	width: 85%; 
+}
+
+#content, #sidebar {
 	padding-bottom: 2em; 
 }
 
-#sidebar {
+body.has-sidebar #content {
+	width: 65%; 
+	float: left;
+}
+
+body.has-sidebar #sidebar {
 	width: 35%;
 	padding-left: 5%; 
 	float: left; 
-	padding-bottom: 2em; 
 }
 
 .nav {
@@ -256,8 +262,8 @@ figure figcaption {
 	body, td, textarea {
 		font-size: 100%; 
 	}
-	#content, 
-	#sidebar {
+	body.has-sidebar #content, 
+	body.has-sidebar #sidebar {
 		float: none;
 		width: 100%; 
 		padding: 0; 
@@ -289,7 +295,6 @@ figure figcaption {
 		font-size: 115%; 
 	}
 }
-
 /*********************************************************************
  * 6. Accessibility helpers
  *

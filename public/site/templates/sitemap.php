@@ -1,17 +1,9 @@
-<?php
+<?php namespace ProcessWire;
 
-include("./_head.php"); ?>
+// sitemap.php template file
+// Generate navigation that descends up to 4 levels into the tree.
+// See the _func.php for the renderNav() function definition. 
+// See the README.txt for more information. 
 
-<div id='content'>
+$content = renderNavTree($homepage, 4); 
 
-	<?php 
-	
-	$maxDepth = 4; 
-	renderNavTree($pages->get('/'), $maxDepth); 
-	// see the _init.php for the renderNavTree function
-	
-	?>
-
-</div>
-
-<?php include("./_foot.php"); ?>

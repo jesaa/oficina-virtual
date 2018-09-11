@@ -1,61 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title><?php echo $page->title; ?></title>
-	<meta name="description" content="<?php echo $page->summary; ?>" />
-	<link href='//fonts.googleapis.com/css?family=Lusitana:400,700|Quattrocento:400,700' rel='stylesheet' type='text/css' />
-	<link rel="stylesheet" type="text/css" href="<?php echo $config->urls->templates?>styles/main.css" />
-</head>
-<body class='has-sidebar'>
+<html lang="es">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <!-- Meta, title, CSS, favicons, etc. -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" href="<?= $config->urls->templates ?>production/images/favicon.ico" type="image/ico" />
 
-	<!-- top navigation -->
-	<ul class='topnav' role='navigation'><?php
+    <title><?= ($page->nombre) ? ucwords(mb_strtolower($page->nombre)):$page->title ?></title>
 
-		// top navigation consists of homepage and its visible children
-		$homepage = $pages->get('/'); 
-		$children = $homepage->children();
+    <!-- Bootstrap -->
+    <link href="<?= $config->urls->templates ?>vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="<?= $config->urls->templates ?>vendors/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <!-- NProgress -->
+    <link href="<?= $config->urls->templates ?>vendors/nprogress/nprogress.css" rel="stylesheet">
+    <!-- iCheck -->
+    <link href="<?= $config->urls->templates ?>vendors/iCheck/skins/flat/green.css" rel="stylesheet">
 
-		// make 'home' the first item in the navigation
-		$children->prepend($homepage); 
+    <!-- bootstrap-progressbar -->
+    <link href="<?= $config->urls->templates ?>vendors/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css" rel="stylesheet">
+    <link href="<?= $config->urls->templates ?>vendors/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet">
+    <link href="<?= $config->urls->templates ?>vendors/fullcalendar/dist/fullcalendar.print.css" rel="stylesheet" media="print">
 
-		// render an <li> for each top navigation item
-		foreach($children as $child) {
-			if($child->id == $page->rootParent->id) {
-				// this $child page is currently being viewed (or one of it's children/descendents)
-				// so we highlight it as the current page in the navigation
-				echo "<li class='current' aria-current='true'><span class='visually-hidden'>Current page: </span><a href='$child->url'>$child->title</a></li>";
-			} else {
-				echo "<li><a href='$child->url'>$child->title</a></li>";
-			}
-		}
+    
+    <!-- JQVMap -->
+    <link href="<?= $config->urls->templates ?>vendors/jqvmap/dist/jqvmap.min.css" rel="stylesheet"/>
+    <!-- bootstrap-daterangepicker -->
+    <link href="<?= $config->urls->templates ?>vendors/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/eonasdan-bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css" rel="stylesheet">
+    
+    <!-- Custom Theme Style -->
+    <link href="<?= $config->urls->templates ?>build/css/custom.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/7.0.3/sweetalert2.min.css">
 
-		// output an "Edit" link if this page happens to be editable by the current user
-		if($page->editable()) {
-			echo "<li class='edit'><a href='$page->editUrl'>Edit</a></li>";
-		}
+     <link href="<?= $config->urls->templates ?>vendors/pnotify/dist/pnotify.css" rel="stylesheet">
+    <link href="<?= $config->urls->templates ?>vendors/pnotify/dist/pnotify.buttons.css" rel="stylesheet">
+    <link href="<?= $config->urls->templates ?>vendors/pnotify/dist/pnotify.nonblock.css" rel="stylesheet">
 
-	?></ul>
+   
 
-	<!-- search form -->
-	<form class='search' action='<?php echo $pages->get('template=search')->url; ?>' method='get'>
-		<label for='search' class='visually-hidden'>Search:</label>
-		<input type='text' name='q' id='search' placeholder='Search' value='' />
-		<button type='submit' name='submit' class='visually-hidden'>Search</button>
-	</form>
+    
 
-	<!-- breadcrumbs -->
-	<div class='breadcrumbs' role='navigation' aria-label='You are here:'><?php
-
-		// breadcrumbs are the current page's parents
-		foreach($page->parents() as $item) {
-			echo "<span><a href='$item->url'>$item->title</a></span> "; 
-		}
-		// optionally output the current page as the last item
-		echo "<span>$page->title</span> "; 
-
-	?></div>
-
-	<main id='main'>
-
+  </head>

@@ -69,9 +69,6 @@ learning module development:
 There is a module development forum located at:
 https://processwire.com/talk/forum/19-moduleplugin-development/
 
-For a tutorial on how to create modules, see:
-http://wiki.processwire.com/index.php/Module_Creation
-
 
 Additional resources
 --------------------
@@ -84,6 +81,5 @@ http://processwire.com/api/modules/
 
 For discussion and support of modules, see:
 http://processwire.com/talk/forum/4-modulesplugins/
-
 
 

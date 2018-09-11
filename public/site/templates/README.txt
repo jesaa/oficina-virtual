@@ -1,5 +1,5 @@
-Welcome to the Default/Basic Site Profile (Beginner Edition)
-============================================================
+Welcome to the Default Site Profile (Intermediate Edition)
+==========================================================
 
 This is a plain text document. If you are currently online with 
 internet access, you will find it much nicer to read an HTML
@@ -7,15 +7,16 @@ formatted version of this document located at:
 
 http://processwire.com/docs/tutorials/default-site-profile/
 
-Are you already somewhat familiar with ProcessWire and/or PHP? You
-might also want to look into the Intermediate Edition of this profile.
+If you are just getting started with ProcessWire, you might 
+also want to look into the beginner edition of this site profile.
 
 Need multi-language support? The multi-language version of this 
 default site profile is a good place to start. 
 
-Both the intermediate and multi-language versions of this site 
+Both the beginner and multi-language versions of this site 
 profile are available as installation options when installing 
 ProcessWire. 
+
 
 Introduction
 ============
@@ -23,7 +24,8 @@ Introduction
 Just getting started with ProcessWire and aren't totally clear on what
 template files are? The good news is that template files aren't anything 
 other than regular HTML or PHP files, and you can use them however you 
-want! 
+want! This particular site profile uses a strategy called Delayed Output,
+but you should use whatever strategy you prefer.
 
 If you know enough to create an HTML or PHP document, then you already 
 know how to use ProcessWire template files. The only difference is that
@@ -63,114 +65,136 @@ Template file strategies
 The two most popular strategies for template files are:
 
   1. Direct Output is the simplest strategy and the one used by the
-     beginner edition of this site profile. While it doesn't scale as 
-     well as other strategies, it is a very good point to start from. 
-     If you've ever worked with WordPress templates, chances are you 
-     already know how Direct Output works. Read more about the Direct 
-     Output strategy:
+     Classic Site Profile. While it doesn't scale as well as other
+     strategies, it is a very good point to start from. If you've
+     ever worked with WordPress templates, chances are you already 
+     know how Direct Output works. If you'd rather get started with
+     this strategy, we recommend installing the Classic Site Profile
+     rather than this one. Read more about the Direct Output strategy:
      http://processwire.com/to/direct-output/
 
-  2. Delayed Output is the strategy used by the intermediate edition 
-     of this site profile. It is also quite simple but involves 
-     populating content to placeholder variables rather than outputting
-     directly. As a result it may take a few more seconds to understand
-     than direct output, but the result is more scalable and 
-     maintainable. Read more about Delayed Output here: 
+  2. Delayed Output is the strategy used by this site profile. It
+     is also quite simple but involves populating content to 
+     placeholder variables rather than outputting directly. As a 
+     result it may take a few more seconds to understand than direct
+     output, but the result is more scalable and maintainable. Read
+     more about Delayed Output here: 
      http://processwire.com/to/delayed-output/
 
 
-How this Default Site Profile works (Beginner Edition)
-======================================================
+How this Default Site Profile works
+===================================
 
-This Default Site Profile (beginner edition) uses the Direct Output
-strategy. When a page is viewed on your site, here's what happens:
+This Default Site Profile uses the Delayed Output strategy. Here's
+how it works: 
 
   1. The initialization file is loaded (_init.php).
-     Here we use it just to define a shared function for navigation. 
+     We use it to define placeholder variables for content regions.
 
-  2. The template file is loaded (i.e. basic-page.php or another).
-     It outputs the content for the page.  
+  2. The template file is loaded (i.e. home.php or another).
+     We use it to populate values into the placeholder variables. 
 
+  3. The main output file is loaded (_main.php).
+     It is an HTML document that outputs the placeholder variables.
 
-Below are more details on exactly what takes place and in these two
+Below are more details on exactly what takes place and in the three
 steps outlined above: 
 
   1. The initialization file is loaded (_init.php)
      ---------------------------------------------
-     This step is completely optional with direct output, but we find
-     it handy to use this file to define our shared functions (if any).
-     In the case of this profile, we define a single renderNavTree() 
-     function. It is useful to have this as a re-usable function since
-     we use it to generate markup for more than one place (specifically,
-     for sidebar navigation and for the sitemap). However, if you have
-     any confusion about this, ignore it for now and focus on #2 below
-     as an initialization file is completely optional. 
+     We define placeholder variables for the regions in our page in
+     the _init.php file. These placeholders can be anything that you 
+     like (and in any quantity) and usually depends entirely
+     on the needs of your site design and content. 
+
+     In this default site, our needs are simple so we've defined 
+     placeholders for just 3 regions on the page. We usually name 
+     these regions something consistent with the HTML tag, id or class 
+     attribute just for ease of readability, but that's not required.
+     These are the three placeholder variables we've defined in this site: 
+
+     $title	- The headline or title (we use for <title> and <h1>)
+     $content	- The main page content (we use for <div id='content'>)
+     $sidebar	- Sidebar content (we use for <div id='sidebar'>)
+
+     The leading "$" is what designates them as placeholder variables. 
+     We do this in a file called _init.php. ProcessWire knows to load 
+     this _init.php file first, before our actual template file. We 
+     define these placeholder variables simply giving each a default 
+     value, or by just making them blank. Go ahead and take a look at 
+     the _init.php file now if you can. But to summarize, here's how
+     you define a blank placeholder variable:
+ 
+     $content = ''; 
+
+     And here's how you define a placeholder variable with an initial
+     or default value:
+
+     $content = "<p>Hello World</p>";
+
+     Here's how we would populate it with a dynamic value from $page:
+
+     $content = $page->body; 
+
+     The last thing we want to mention about _init.php is that we 
+     might also use it to load any shared functions. You'll see a line
+     in this site's _init.php the includes a file called _func.php. 
+     That file simply contains a shared function (used by multiple
+     template files) for generating navigation markup. This part is 
+     not so important for now, so come back to it once you understand
+     how everything else works. But the point to understand now is 
+     that the _init.php file initializes everything that may be used
+     by the site's template files. 
 
 
-  2. The template file is loaded (i.e. basic-page.php or another)
+  2. The template file is loaded (i.e. home.php or another)
      ------------------------------------------------------
      Next, ProcessWire loads the template file used by the page being
-     viewed. For example, most pages here use basic-page.php. 
+     viewed. For example, the homepage uses home.php. We use our 
+     template file to populate those placeholder variables we defined
+     in _init.php with the values we want. 
 
-     The first thing that our template file does is include the HTML
-     header markup, which we've put in a file called _head.php:
+     For instance, most often we populate our $content variable with 
+     the body copy from the current page: 
 
-     include("./_head.php"); 
+     $content = $page->body; 
 
-     The above is simply a PHP function that says "include this file".
-     The leading "./" just means "from the current directory". We also
-     have an underscore "_" prepended to our filename here as a way
-     to identify this as an include file rather than a regular template
-     file. While completely optional, the underscore does also make 
-     ProcessWire ignore it when looking for new template files, so you
-     may find it handy to use this convention in your own include files.
-     An alternate would be to use .inc as an extension rather than .php.
+     But we might also do something more like append some navigation 
+     under the body copy or prepend a photo... the sky is the limit. 
 
-     Have a look in the _head.php file now so you can see what's there.
-     It is basically half of an HTML file. Now have a look in _foot.php,
-     that's the other half. Notice that all the template files that 
-     include _head.php at the beginning also include _foot.php at the
-     ending. This is to ensure there is a complete HTML document being
-     output. 
+     $content = "<img src='/photo.jpg'>" . $page->body;
 
-     To conclude, our template files (using direct output) are focused
-     on outputting what goes in-between the _head.php and _foot.php.
-     In our case, this is always a <div id='content'>...</div> and 
-     optionally a <div id='sidebar'>...</div>. But for your own
-     template files you might choose to output something completely 
-     different. 
+     Our search.php template file for example, populates $content with 
+     a list of search results. 
 
-Files that make up this profile
-===============================
+     Because our placeholder variables were already defined in the
+     _init.php file with default values, our template file (like 
+     home.php or basic-page.php) need only focus on populating the
+     placeholder variables that you want to modify. It does not 
+     even need to mention those placeholder variables that it doesn't
+     need or doesn't need to change. 
+   
+ 
+  3. Everything gets output by _main.php
+     -----------------------------------
+     After ProcessWire has loaded our template file (i.e. home.php) it
+     then knows to load the _main.php file last. In the case of this 
+     site, our _main.php file is an entire HTML document that outputs 
+     our placeholder variables in the regions where they should appear. 
+     For example, the $content variable gets output in #content <div>
+     like this:
 
-Here is a summary of what is in each of the files in this directory. 
-We also recommend reviewing them in this order: 
+     <div id='content'>
+       <?= $content ?>
+     </div>
 
-- _head.php
-  HTML header (top half of HTML document)
+     Please go ahead and take a look at the _main.php file for context.
 
-- _foot.php
-  HTML footer (bottom half of HTML document)
-
-- basic-page.php
-  Template file outputting #content and #sidebar columns. This 
-  template file is used by most pages in this small site. 
-
-- home.php
-  Template file used by homepage. Note that since the homepage uses
-  nearly the same layout as the other pages in the site, this 
-  template file simply includes basic-page.php. No need two have 
-  more than one template file with the same contents. 
-
-- sitemap.php
-  Outputs a sitemap of the entire site. 
-
-- search.php
-  Outputs results of site search queries. 
-
-- _init.php
-  Initialization file that we use to define a shared function for
-  generating navigation markup. 
+     Note that our _main.php uses "<?php echo $content; ?>" style,
+     rather than "<?= $content ?>" style, like shown above, just in 
+     case you happen to be running an older version of PHP. But more 
+     than likely you can use the shorter syntax when preferred, as the 
+     two are functionally equivalent.
 
 
 More template file resources
