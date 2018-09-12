@@ -2,10 +2,9 @@ env:
   global:
     - PROJECT_NAME=oficina-virtual
     # master SHA256-606c78f9bd55e946b34762b7f54b65177eaa37a3fc42559ea62712cf30431b2b
-    - secure: ""
+    #- secure: 
     # beta SHA256-af7507b9411c78ff3df1efd621fbcb9ec9ab7057af1aa1e543dbca6a9c4020f0
-    # secure: ""
-script:
+    - secure: "bcbXaOiU0P9q0LlQGUtHCVOzrpf+beFDhVI3Yu2cXppBEP4mo9HnjdwxSsUfmqPsvkbd4NljX2siKexkEdpo2fzY6ZJgoxvA5fUVT9d9V4V4E7xNwB12ERSHe6Mz8TlI+robbdNlr1uVvKylSswifPOzEV2pgiyqS2UQTzmN8M7pacsoTVCIC2SbuVUKeyFYsiu1lzzJSM7lcfjh8QUnDqM/nYdK0sRGv88gpvJOdmCYdGtLqo8LL5Oa/p7os1qxWeOb1L8S6Ug6Yy4G63AsdZhadmdyZnEa6J5aebCpLles2kwErPFAocCb9B5VkRVUU9GkllGHxhyOojHIF2BvE0+zNLcqGRnZ12/fA9Dngn/gumOFhYiS5i1eV/xmkAmxYjzTqnsau41ezMvUgRo3BqkfoNFVfIGhmVGpFAel8au+JzGWa84MYeFpCOrFhfxQUzhK2UBgOzF2Wd9kESA9RrFyV50g00O4uWust3dGTXyekugJzPXBrq2/xuFyhJsq25q+Vyxm92koyWr892e+BAXua0gVcpby60HIE5V/QIGrjti7uQDiWXWUjZb6jDd8vqyLQVt+CHcQkdaSynOt+lTKrbPJ1LI0LCGH+sxfPCPFfiBQmAmDcMzMnUTRLsi1n88JjKJmVj8TSgRLw76NGlJp5A2iwP1yw502nZyLsyM="
   - true
 notifications:
   email: false
@@ -18,8 +17,6 @@ before_deploy:
   - export GIT_FTP_URL_BRANCH=GIT_FTP_URL_$TRAVIS_BRANCH
   - './git-ftp add-scope $TRAVIS_BRANCH "${!GIT_FTP_URL_BRANCH}"'
   - git config git-ftp.syncroot public
-  - npm install -g uglify-js
-  - gem install sass -v 3.4.23 --no-ri --no-rdoc
 deploy:
   - provider: script
     script: ./git-ftp push -s $TRAVIS_BRANCH -v -f
